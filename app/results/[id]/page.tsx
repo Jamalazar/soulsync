@@ -3,12 +3,11 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-// Added addDoc, collection, serverTimestamp for feedback
 import { doc, onSnapshot, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { QUESTIONS, Question } from '@/data/questions'; 
 import { INSIGHTS } from '@/data/insights'; 
-// Added MessageSquarePlus, Send for feedback icons
-import { Loader2, Copy, AlertTriangle, Lock, Heart, Unlock, ShieldCheck, MessageCircle, Sparkles, Save, RefreshCw, MessageSquarePlus, Send } from 'lucide-react';
+// Changed 'Copy' to 'Share2' for the icon
+import { Loader2, Share2, Copy, AlertTriangle, Lock, Heart, Unlock, ShieldCheck, MessageCircle, Sparkles, Save, RefreshCw, MessageSquarePlus, Send } from 'lucide-react';
 import { signInAnonymously } from 'firebase/auth';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,13 +43,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
   const handleUnlock = async () => {
     setIsPaying(true);
-    // FAKE DEV MODE (Replace with real API call later)
     setTimeout(() => {
        window.location.href = `${window.location.origin}/results/${id}?success=true`;
     }, 1500);
   };
 
-  // --- FEEDBACK HANDLER ---
   const handleSendFeedback = async () => {
     if (!feedback.trim()) return;
     setIsSendingFeedback(true);
@@ -125,11 +122,27 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     return { percent, dealbreakerTriggered, categories };
   };
 
-  const copyLink = () => {
+  // --- UPDATED SHARE LOGIC ---
+  const handleShare = async () => {
     const url = `${window.location.origin}/quiz/${id}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    
+    // Check if browser supports native sharing (Mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'SoulSync Compatibility Test',
+          text: 'I just took the SoulSync test. Tap to see if we are compatible!',
+          url: url,
+        });
+      } catch (error) {
+        console.log('Error sharing', error);
+      }
+    } else {
+      // Fallback to Copy Clipboard (Desktop)
+      navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (loading) return (
@@ -181,8 +194,17 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
           <div className="bg-slate-100 p-4 rounded-lg break-all text-sm text-indigo-600 font-medium border border-indigo-100">
             {window.location.origin}/quiz/{id}
           </div>
-          <button onClick={copyLink} className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98] flex items-center justify-center gap-2">
-            {copied ? "Copied!" : "Copy Invite Link"} <Copy className="w-5 h-5" />
+          
+          {/* UPDATED SHARE BUTTON */}
+          <button 
+            onClick={handleShare} 
+            className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-slate-800 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            {copied ? (
+                <>Copied! <Copy className="w-5 h-5" /></>
+            ) : (
+                <>Share Invite Link <Share2 className="w-5 h-5" /></>
+            )}
           </button>
         </div>
       </div>
@@ -374,7 +396,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
              </div>
            )}
 
-           {/* --- FEEDBACK SECTION (NEW) --- */}
+           {/* --- FEEDBACK SECTION --- */}
            <div className="mt-12 bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
               <div className="flex items-center gap-2 mb-4 text-slate-800">
                 <MessageSquarePlus className="w-5 h-5 text-indigo-500" />
