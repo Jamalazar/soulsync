@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 // Initialize Stripe with your Secret Key
-// NOTE: This will fail if you haven't added STRIPE_SECRET_KEY to .env.local yet.
-// That is okay! We are just building the structure now.
+// UPDATED: Changed apiVersion to match the latest library requirement
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20.acacia', 
+  apiVersion: '2025-11-17.clover', 
 });
 
 export async function POST(req: Request) {
