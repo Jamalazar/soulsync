@@ -3,10 +3,12 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+// Added addDoc, collection, serverTimestamp for feedback
+import { doc, onSnapshot, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { QUESTIONS, Question } from '@/data/questions'; 
 import { INSIGHTS } from '@/data/insights'; 
-import { Loader2, Copy, AlertTriangle, Lock, Heart, Unlock, ShieldCheck, MessageCircle, Sparkles, Save, RefreshCw } from 'lucide-react';
+// Added MessageSquarePlus, Send for feedback icons
+import { Loader2, Copy, AlertTriangle, Lock, Heart, Unlock, ShieldCheck, MessageCircle, Sparkles, Save, RefreshCw, MessageSquarePlus, Send } from 'lucide-react';
 import { signInAnonymously } from 'firebase/auth';
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,6 +20,11 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+
+  // --- FEEDBACK STATE ---
+  const [feedback, setFeedback] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [isSendingFeedback, setIsSendingFeedback] = useState(false);
 
   useEffect(() => {
     signInAnonymously(auth).catch((e) => console.error(e));
@@ -37,9 +44,31 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
   const handleUnlock = async () => {
     setIsPaying(true);
+    // FAKE DEV MODE (Replace with real API call later)
     setTimeout(() => {
        window.location.href = `${window.location.origin}/results/${id}?success=true`;
     }, 1500);
+  };
+
+  // --- FEEDBACK HANDLER ---
+  const handleSendFeedback = async () => {
+    if (!feedback.trim()) return;
+    setIsSendingFeedback(true);
+    try {
+      await addDoc(collection(db, "feedback"), {
+        text: feedback,
+        testId: id,
+        createdAt: serverTimestamp(),
+        userId: auth.currentUser?.uid || 'anonymous'
+      });
+      setFeedbackSent(true);
+      setFeedback("");
+    } catch (error) {
+      console.error("Error sending feedback:", error);
+      alert("Failed to send feedback.");
+    } finally {
+      setIsSendingFeedback(false);
+    }
   };
 
   const handleSaveAccount = () => {
@@ -306,13 +335,7 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                      {isPaying ? <Loader2 className="animate-spin w-4 h-4"/> : <Unlock className="w-4 h-4" />}
                      Unlock for $1.99
                    </button>
-                   
-                   {/* UPDATED BUTTON STYLE FOR 'START NEW TEST' */}
-                   <button 
-                     onClick={() => router.push('/')}
-                     className="w-full bg-white border border-slate-200 text-slate-500 font-bold py-3 rounded-lg hover:bg-slate-50 hover:text-slate-700 transition-all flex items-center justify-center gap-2"
-                   >
-                     <RefreshCw className="w-4 h-4" />
+                   <button onClick={() => router.push('/')} className="text-slate-600 text-sm font-medium hover:text-slate-900 hover:underline transition-all">
                      No thanks, start a new test
                    </button>
                 </div>
@@ -350,6 +373,38 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 </button>
              </div>
            )}
+
+           {/* --- FEEDBACK SECTION (NEW) --- */}
+           <div className="mt-12 bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-4 text-slate-800">
+                <MessageSquarePlus className="w-5 h-5 text-indigo-500" />
+                <h3 className="font-bold">Help us improve</h3>
+              </div>
+              
+              {feedbackSent ? (
+                <div className="text-green-600 text-sm font-medium bg-green-50 p-4 rounded-lg text-center">
+                  Thank you! Your feedback helps us make SoulSync better. ❤️
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <textarea 
+                    value={feedback}
+                    onChange={(e) => setFeedback(e.target.value)}
+                    placeholder="What did you like? What was missing?"
+                    className="w-full p-3 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24 bg-slate-50 text-slate-700 placeholder:text-slate-400"
+                  />
+                  <button 
+                    onClick={handleSendFeedback}
+                    disabled={isSendingFeedback || !feedback.trim()}
+                    className="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSendingFeedback ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send Feedback
+                  </button>
+                </div>
+              )}
+           </div>
+
         </div>
       </div>
     </div>
